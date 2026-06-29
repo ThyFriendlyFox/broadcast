@@ -1,0 +1,160 @@
+// Broadcast — AI CMO platform data model
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A connected project / website being marketed.
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  domain      String
+  category    String?
+  size        String? // e.g. "Solo", "Startup", "SMB", "Enterprise"
+  description String?
+  brandColor  String?  @default("#6366f1")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents     Document[]
+  competitors   Competitor[]
+  integrations  Integration[]
+  agents        Agent[]
+  feedItems     FeedItem[]
+  contentPieces ContentPiece[]
+  snapshots     AnalyticsSnapshot[]
+  messages      ChatMessage[]
+  campaigns     Campaign[]
+}
+
+// Knowledge documents (Product Information, Brand Voice, llms.txt, etc.)
+model Document {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String // product_information | brand_voice | competitor_analysis | marketing_strategy | llms_txt | articles | custom
+  title     String
+  content   String   @default("")
+  status    String   @default("ready") // ready | generating | draft | new
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Competitor {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain    String
+  name      String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// Third-party connections (Google Analytics, Search Console, X, Reddit, LinkedIn).
+model Integration {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provider    String // google_analytics | search_console | x | reddit | linkedin | hackernews
+  status      String   @default("disconnected") // connected | disconnected | error | simulated
+  accountName String?
+  config      String?  @default("{}") // JSON blob of non-secret config / metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, provider])
+}
+
+// Marketing agents (SEO, Articles, Reddit, Hacker News, LinkedIn, X Influencer, UGC).
+model Agent {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type        String // seo | articles | reddit | hackernews | linkedin | x_influencer | ugc_videos
+  enabled     Boolean  @default(true)
+  status      String   @default("idle") // idle | scanning | ready | error
+  summary     String?  @default("") // short status line shown in the feed
+  lastRunAt   DateTime?
+  config      String?  @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, type])
+}
+
+// Items surfaced in the Agents Feed (opportunities / recommendations).
+model FeedItem {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentType   String
+  kind        String // opportunity | recommendation | post | topic | fix | campaign
+  title       String
+  description String?
+  payload     String?  @default("{}") // JSON: generated content, links, metadata
+  priority    Int      @default(2) // 1 high, 2 med, 3 low
+  status      String   @default("new") // new | actioned | dismissed | published
+  url         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Concrete content created by agents (tweets, posts, articles, scripts).
+model ContentPiece {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  platform    String // x | linkedin | reddit | hackernews | article | ugc_video
+  title       String?
+  body        String   @default("")
+  meta        String?  @default("{}") // JSON: hashtags, media, target subreddit, etc.
+  status      String   @default("draft") // draft | scheduled | publishing | published | failed
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  externalUrl String?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Snapshots of analytics (PageSpeed/Lighthouse, Core Web Vitals, SEO metrics).
+model AnalyticsSnapshot {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind      String // pagespeed | crawl | search_console | analytics
+  strategy  String? // mobile | desktop
+  data      String   @default("{}") // JSON blob of metrics
+  createdAt DateTime @default(now())
+}
+
+// AI CMO conversation.
+model ChatMessage {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role      String // user | assistant | system
+  content   String
+  meta      String?  @default("{}")
+  createdAt DateTime @default(now())
+}
+
+// Influencer / marketing campaigns (e.g. X Influencer Agent campaigns).
+model Campaign {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type        String // x_influencer | ...
+  name        String
+  status      String   @default("draft") // draft | active | paused | completed
+  goal        String?
+  audience    String?
+  data        String?  @default("{}") // JSON: influencer list, targeting, drafts
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

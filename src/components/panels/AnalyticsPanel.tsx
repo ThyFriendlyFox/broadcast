@@ -81,10 +81,11 @@ function GoogleConnect({ dash, onConnect }: { dash: ProjectDashboard; onConnect:
     onConnect();
   }
 
-  const Card = ({ provider, label, sub, status }: { provider: string; label: string; sub: string; status?: string }) => {
+  const renderCard = ({ provider, label, sub, status }: { provider: string; label: string; sub: string; status?: string }) => {
     const connected = status === "connected" || status === "simulated";
     return (
       <button
+        key={provider}
         onClick={() => connect(provider)}
         className="flex-1 rounded-lg border border-border bg-bg-card p-3 text-left hover:border-brand/40 transition-colors"
       >
@@ -102,8 +103,8 @@ function GoogleConnect({ dash, onConnect }: { dash: ProjectDashboard; onConnect:
     <div>
       <div className="text-[10px] uppercase tracking-wide text-ink-faint mb-2">Connect Google Services</div>
       <div className="flex gap-2">
-        <Card provider="google_analytics" label="Google Analytics" sub="Traffic & behavior" status={ga?.status} />
-        <Card provider="search_console" label="Search Console" sub="Search rankings" status={sc?.status} />
+        {renderCard({ provider: "google_analytics", label: "Google Analytics", sub: "Traffic & behavior", status: ga?.status })}
+        {renderCard({ provider: "search_console", label: "Search Console", sub: "Search rankings", status: sc?.status })}
       </div>
     </div>
   );
@@ -121,9 +122,9 @@ function PageSpeedScores({ mobile, desktop }: { mobile: PageSpeedResult | null; 
   if (!mobile && !desktop) {
     return <p className="text-xs text-ink-faint">Run a scan to load Lighthouse scores.</p>;
   }
-  const Row = ({ label, r }: { label: string; r: PageSpeedResult | null }) =>
+  const renderRow = ({ label, r }: { label: string; r: PageSpeedResult | null }) =>
     r ? (
-      <div>
+      <div key={label}>
         <div className="text-[11px] text-ink-muted mb-2 font-medium">{label}</div>
         <div className="grid grid-cols-4 gap-2">
           <ScoreRing score={r.scores.performance} label="Performance" />
@@ -141,8 +142,8 @@ function PageSpeedScores({ mobile, desktop }: { mobile: PageSpeedResult | null; 
         <span className="text-[10px] text-ink-faint">{mobile?.source === "lighthouse" ? "Lighthouse (live)" : "Estimated"}</span>
       </div>
       <div className="space-y-4">
-        <Row label="Mobile" r={mobile} />
-        <Row label="Desktop" r={desktop} />
+        {renderRow({ label: "Mobile", r: mobile })}
+        {renderRow({ label: "Desktop", r: desktop })}
       </div>
     </div>
   );
@@ -150,9 +151,9 @@ function PageSpeedScores({ mobile, desktop }: { mobile: PageSpeedResult | null; 
 
 function WebVitals({ mobile, desktop }: { mobile: PageSpeedResult | null; desktop: PageSpeedResult | null }) {
   if (!mobile && !desktop) return null;
-  const Col = ({ label, r }: { label: string; r: PageSpeedResult | null }) =>
+  const renderCol = ({ label, r }: { label: string; r: PageSpeedResult | null }) =>
     r ? (
-      <div className="flex-1 rounded-lg border border-border bg-bg-card p-3">
+      <div key={label} className="flex-1 rounded-lg border border-border bg-bg-card p-3">
         <div className="text-[11px] text-ink-muted mb-2 font-medium">{label}</div>
         <div className="grid grid-cols-2 gap-2.5">
           {r.vitals.map((v) => (
@@ -173,8 +174,8 @@ function WebVitals({ mobile, desktop }: { mobile: PageSpeedResult | null; deskto
     <div>
       <div className="text-[10px] uppercase tracking-wide text-ink-faint mb-2.5">Core Web Vitals</div>
       <div className="flex gap-2">
-        <Col label="Desktop" r={desktop} />
-        <Col label="Mobile" r={mobile} />
+        {renderCol({ label: "Desktop", r: desktop })}
+        {renderCol({ label: "Mobile", r: mobile })}
       </div>
     </div>
   );

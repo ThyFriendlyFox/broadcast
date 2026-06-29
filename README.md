@@ -17,10 +17,10 @@ you add API keys.
 ## Quick start
 
 ```bash
-npm install            # installs deps + generates Prisma client
+pnpm install           # installs deps + generates Prisma client
 cp .env.example .env   # optional: add API keys to go "live"
-npm run db:push        # create the SQLite database (first run only)
-npm run dev            # http://localhost:3000
+pnpm db:push           # create the SQLite database (first run only)
+pnpm dev               # http://localhost:3000
 ```
 
 Open the app, type a domain (e.g. `yourcompany.com`), and click **Connect**.
@@ -156,11 +156,11 @@ prisma/schema.prisma       # data model
 - `GET /api/status` — current feature/live‑mode flags
 
 ## Scripts
-- `npm run dev` — dev server
-- `npm run build` — generate client, apply migrations, build
-- `npm start` — production server
-- `npm run lint` — ESLint
-- `npm run db:push` — sync schema to SQLite
+- `pnpm dev` — dev server
+- `pnpm build` — generate client, apply migrations, build
+- `pnpm start` — production server
+- `pnpm lint` — ESLint
+- `pnpm db:push` — sync schema to SQLite
 
 ## Notes
 - This is a starting platform, not a hosted service. "Simulated" actions are clearly

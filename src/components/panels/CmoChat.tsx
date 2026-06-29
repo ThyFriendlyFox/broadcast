@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Loader2, Sparkles, BadgeCheck, ArrowUp } from "lucide-react";
+import { Loader2, Sparkles, ArrowUp } from "lucide-react";
 import type { ProjectDashboard, FeatureStatus } from "@/lib/types";
 
 type Msg = ProjectDashboard["messages"][number];
@@ -21,6 +21,7 @@ export default function CmoChat({
   const [sending, setSending] = useState(false);
   const [optimistic, setOptimistic] = useState<Msg[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tempIdRef = useRef(0);
 
   const messages = [...dash.messages, ...optimistic.filter((o) => !dash.messages.some((m) => m.id === o.id))];
 
@@ -33,7 +34,7 @@ export default function CmoChat({
     if (!message || sending) return;
     setInput("");
     setSending(true);
-    const tempUser: Msg = { id: `tmp-${Date.now()}`, role: "user", content: message, createdAt: new Date() as any };
+    const tempUser: Msg = { id: `tmp-${(tempIdRef.current += 1)}`, role: "user", content: message, createdAt: new Date() as any };
     setOptimistic((o) => [...o, tempUser]);
     try {
       await fetch(`/api/projects/${dash.project.id}/chat`, {
@@ -55,21 +56,6 @@ export default function CmoChat({
           <Sparkles className="w-3.5 h-3.5 text-brand-fg" /> Talk to AI CMO
         </h2>
         <span className="text-[10px] text-ink-faint">{status.ai ? "online" : "local mode"}</span>
-      </div>
-
-      {/* Hire banner */}
-      <div className="m-3 mb-2 rounded-xl bg-gradient-to-br from-brand/20 to-brand/5 border border-brand/20 p-3 shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold flex items-center gap-1.5">
-              <BadgeCheck className="w-4 h-4 text-brand-fg" /> Hire your full-time CMO
-            </div>
-            <div className="text-[11px] text-ink-muted">AI-powered marketing on autopilot</div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold leading-none">$99<span className="text-[10px] font-normal text-ink-faint">/mo</span></div>
-          </div>
-        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin px-3 py-2 space-y-3">

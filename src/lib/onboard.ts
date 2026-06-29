@@ -1,53 +1,24 @@
 import { prisma } from "./prisma";
-import { aiJson } from "./ai";
-import { crawlSite } from "./integrations/crawl";
 import { normalizeUrl, domainFromUrl } from "./utils";
 import { AGENTS } from "./agents/registry";
-
-interface InferredProfile {
-  name: string;
-  category: string;
-  description: string;
-  productInformation: string;
-  brandVoice: string;
-  marketingStrategy: string;
-  competitorAnalysis: string;
-  competitors: string[];
-}
+import { crawlSiteProfile } from "./acquisition/siteCrawl";
+import { buildProductInformation, buildLlmsTxt } from "./acquisition/synthesize";
 
 /**
- * Connect a new project: crawl the site, infer a company profile with AI
- * (graceful local fallback), and seed documents, competitors, integrations,
- * and the default agent roster.
+ * Connect a new project: do a fast multi-page crawl to seed real product info,
+ * then let the acquisition harness (kicked off by the first scan) discover and
+ * analyze competitors and synthesize the full knowledge base.
  */
 export async function connectProject(rawUrl: string, overrides?: { name?: string; category?: string }) {
   const url = normalizeUrl(rawUrl);
   const domain = domainFromUrl(url);
 
-  const crawl = await crawlSite(url);
-  const siteText = [crawl.title, crawl.metaDescription, ...crawl.h1s].filter(Boolean).join(" — ");
+  // Fast first pass: a few key pages so the dashboard has real content immediately.
+  const site = await crawlSiteProfile(url, { maxPages: 4, concurrency: 3 });
 
-  const guessedName = overrides?.name || crawl.title?.split(/[|\-–—:]/)[0]?.trim() || domain.split(".")[0];
-  const fallback: InferredProfile = {
-    name: cap(guessedName),
-    category: overrides?.category || "software",
-    description: crawl.metaDescription || `${cap(guessedName)} — ${siteText || "a modern software product."}`,
-    productInformation: `${cap(guessedName)} (${url})\n\n${crawl.metaDescription || ""}\n\nKey pages and headings:\n${crawl.h1s.map((h) => `- ${h}`).join("\n") || "- (none detected)"}`,
-    brandVoice: "Confident, clear, and helpful. Speak plainly, avoid jargon, and lead with customer value.",
-    marketingStrategy: `Primary channels: SEO, content, and community (Reddit, Hacker News, X, LinkedIn).\nPositioning: ${crawl.metaDescription || "the simplest way to get the job done"}.\nFocus the first 30 days on technical SEO fixes, 2 cornerstone articles, and a build-in-public X presence.`,
-    competitorAnalysis: "Add competitors to generate a positioning matrix and content gap analysis.",
-    competitors: [],
-  };
-
-  const { data: profile } = await aiJson<InferredProfile>({
-    system:
-      "You are a brand strategist. Given a website's crawl data, infer a company profile. Return JSON with keys: name, category, description, productInformation, brandVoice, marketingStrategy, competitorAnalysis, competitors (array of likely competitor domains). Be specific and useful.",
-    prompt: `URL: ${url}\nTitle: ${crawl.title}\nDescription: ${crawl.metaDescription}\nHeadings: ${crawl.h1s.join(" | ")}\nWord count: ${crawl.wordCount}`,
-    fallback,
-  });
-
-  const name = overrides?.name || profile.name || fallback.name;
-  const category = overrides?.category || profile.category || fallback.category;
+  const name = overrides?.name || site.name || cap(domain.split(".")[0]);
+  const category = overrides?.category || "software";
+  const description = site.description || site.valueProps[0] || `${name} — a modern ${category} product.`;
 
   const project = await prisma.project.create({
     data: {
@@ -55,19 +26,16 @@ export async function connectProject(rawUrl: string, overrides?: { name?: string
       url,
       domain,
       category,
-      description: profile.description || fallback.description,
+      description,
       documents: {
         create: [
-          { type: "product_information", title: "Product Information", content: profile.productInformation || fallback.productInformation, status: "ready" },
-          { type: "brand_voice", title: "Brand Voice", content: profile.brandVoice || fallback.brandVoice, status: "ready" },
-          { type: "competitor_analysis", title: "Competitor Analysis", content: profile.competitorAnalysis || fallback.competitorAnalysis, status: "new" },
-          { type: "marketing_strategy", title: "Marketing Strategy", content: profile.marketingStrategy || fallback.marketingStrategy, status: "ready" },
-          { type: "llms_txt", title: "llms.txt", content: buildLlmsTxt(name, url, profile.description || fallback.description), status: "ready" },
+          { type: "product_information", title: "Product Information", content: buildProductInformation(site), status: "ready" },
+          { type: "brand_voice", title: "Brand Voice", content: "Confident, clear, and helpful. Speak plainly, avoid jargon, and lead with customer value.", status: "generating" },
+          { type: "competitor_analysis", title: "Competitor Analysis", content: "Discovering and analyzing competitors…", status: "generating" },
+          { type: "marketing_strategy", title: "Marketing Strategy", content: `Primary channels: SEO, content, and community.\nPositioning: ${description}.`, status: "generating" },
+          { type: "llms_txt", title: "llms.txt", content: buildLlmsTxt(site), status: "ready" },
           { type: "articles", title: "Articles", content: "", status: "new" },
         ],
-      },
-      competitors: {
-        create: (profile.competitors || []).slice(0, 6).map((c) => ({ domain: domainFromUrl(c) })),
       },
       agents: {
         create: AGENTS.map((a) => ({ type: a.type, summary: a.defaultSummary, status: "idle" })),
@@ -84,16 +52,13 @@ export async function connectProject(rawUrl: string, overrides?: { name?: string
     },
   });
 
-  // Store the initial crawl so the SEO agent and analytics panel have data immediately.
-  await prisma.analyticsSnapshot.create({
-    data: { projectId: project.id, kind: "crawl", data: JSON.stringify(crawl) },
-  });
+  // Seed snapshots so the SEO agent + analytics panel + harness have data immediately.
+  await prisma.$transaction([
+    prisma.analyticsSnapshot.create({ data: { projectId: project.id, kind: "crawl", data: JSON.stringify(site.homepage) } }),
+    prisma.analyticsSnapshot.create({ data: { projectId: project.id, kind: "site_profile", data: JSON.stringify(site) } }),
+  ]);
 
   return project;
-}
-
-function buildLlmsTxt(name: string, url: string, description: string): string {
-  return `# ${name}\n\n> ${description}\n\n## About\n${name} (${url}) — generated guidance for AI/answer engines.\n\n## Key pages\n- ${url}\n\n## Contact\n- Website: ${url}\n`;
 }
 
 function cap(s: string): string {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Radio, ArrowRight, Sparkles, Search, Twitter, FileText, MessageSquare } from "lucide-react";
+import { Loader2, Radio, ArrowRight, Sparkles, Search, AtSign as Twitter, FileText, MessageSquare } from "lucide-react";
 import type { FeatureStatus } from "@/lib/types";
 
 const STEPS = [

@@ -23,6 +23,9 @@ export const env = {
   redditClientId: process.env.REDDIT_CLIENT_ID?.trim() || "",
   redditClientSecret: process.env.REDDIT_CLIENT_SECRET?.trim() || "",
 
+  // Optional SERP provider (SerpAPI-compatible) for competitor discovery + keyword data.
+  searchApiKey: process.env.SEARCH_API_KEY?.trim() || "",
+
   cronSecret: process.env.CRON_SECRET?.trim() || "dev-secret",
 };
 
@@ -40,6 +43,9 @@ export const features = {
   },
   get pagespeed() {
     return true; // public endpoint works without a key
+  },
+  get search() {
+    return Boolean(env.searchApiKey);
   },
   get googleOAuth() {
     return Boolean(env.googleClientId && env.googleClientSecret);

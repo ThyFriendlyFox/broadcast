@@ -1,6 +1,7 @@
 import { prisma } from "../prisma";
 import { runPageSpeed } from "../integrations/pagespeed";
 import { crawlSite } from "../integrations/crawl";
+import { runAcquisition } from "../acquisition/harness";
 import { loadProjectContext } from "./context";
 import { RUNNERS } from "./agents";
 import type { AgentType } from "./registry";
@@ -94,9 +95,18 @@ export async function runAgent(projectId: string, type: AgentType) {
   }
 }
 
-/** Full scan: analytics first (SEO agent depends on the crawl), then every agent. */
+/** Full scan: analytics + acquisition harness (knowledge base + competitors), then every agent. */
 export async function runFullScan(projectId: string) {
   await runAnalytics(projectId);
+
+  // Refresh the knowledge base + competitor analysis from real crawled data.
+  // Non-fatal: agents still run on the existing context if acquisition fails.
+  try {
+    await runAcquisition(projectId, { maxCompetitors: 5 });
+  } catch (err) {
+    console.warn("[scan] acquisition failed:", (err as Error).message);
+  }
+
   const types: AgentType[] = ["seo", "articles", "reddit", "hackernews", "linkedin", "x_influencer", "ugc_videos"];
   const results: Record<string, string> = {};
   for (const type of types) {

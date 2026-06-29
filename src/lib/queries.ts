@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { safeJson } from "./utils";
 import type { PageSpeedResult } from "./integrations/pagespeed";
 import type { CrawlResult } from "./integrations/crawl";
+import type { CompetitorAnalysis } from "./acquisition/synthesize";
 
 export async function getProjectDashboard(projectId: string) {
   const project = await prisma.project.findUnique({
@@ -32,10 +33,11 @@ export async function getProjectDashboard(projectId: string) {
     orderBy: { createdAt: "asc" },
   });
 
-  const [mobileSnap, desktopSnap, crawlSnap] = await Promise.all([
+  const [mobileSnap, desktopSnap, crawlSnap, competitorAnalysisSnap] = await Promise.all([
     prisma.analyticsSnapshot.findFirst({ where: { projectId, kind: "pagespeed", strategy: "mobile" }, orderBy: { createdAt: "desc" } }),
     prisma.analyticsSnapshot.findFirst({ where: { projectId, kind: "pagespeed", strategy: "desktop" }, orderBy: { createdAt: "desc" } }),
     prisma.analyticsSnapshot.findFirst({ where: { projectId, kind: "crawl" }, orderBy: { createdAt: "desc" } }),
+    prisma.analyticsSnapshot.findFirst({ where: { projectId, kind: "competitor_analysis" }, orderBy: { createdAt: "desc" } }),
   ]);
 
   return {
@@ -51,7 +53,7 @@ export async function getProjectDashboard(projectId: string) {
       createdAt: project.createdAt,
     },
     documents: project.documents.map((d) => ({ id: d.id, type: d.type, title: d.title, content: d.content, status: d.status })),
-    competitors: project.competitors.map((c) => ({ id: c.id, domain: c.domain, name: c.name })),
+    competitors: project.competitors.map((c) => ({ id: c.id, domain: c.domain, name: c.name, notes: c.notes })),
     integrations: project.integrations.map((i) => ({ id: i.id, provider: i.provider, status: i.status, accountName: i.accountName })),
     agents: project.agents.map((a) => ({ type: a.type, status: a.status, summary: a.summary, enabled: a.enabled, lastRunAt: a.lastRunAt })),
     campaigns: project.campaigns.map((c) => ({ id: c.id, type: c.type, name: c.name, status: c.status, data: safeJson(c.data, {}) })),
@@ -85,6 +87,9 @@ export async function getProjectDashboard(projectId: string) {
       desktop: desktopSnap ? safeJson<PageSpeedResult>(desktopSnap.data, null as any) : null,
       crawl: crawlSnap ? safeJson<CrawlResult>(crawlSnap.data, null as any) : null,
     },
+    competitorAnalysis: competitorAnalysisSnap
+      ? safeJson<CompetitorAnalysis>(competitorAnalysisSnap.data, null as any)
+      : null,
   };
 }
 

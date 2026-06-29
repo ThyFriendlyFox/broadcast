@@ -1,10 +1,51 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
+@theme {
+  --color-bg: #0a0a0b;
+  --color-bg-panel: #121214;
+  --color-bg-card: #17171a;
+  --color-bg-elevated: #1c1c20;
+  --color-bg-hover: #202024;
+
+  --color-border: #26262b;
+  --color-border-subtle: #1e1e22;
+
+  --color-ink: #ededef;
+  --color-ink-muted: #a1a1aa;
+  --color-ink-faint: #6b6b74;
+
+  --color-brand: #6366f1;
+  --color-brand-fg: #a5b4fc;
+
+  --color-good: #22c55e;
+  --color-warn: #f59e0b;
+  --color-bad: #ef4444;
+
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+
+  --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
+  --animate-slide-up: slide-up 0.25s ease-out;
+
+  @keyframes pulse-dot {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes slide-up {
+    0% {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 * {
@@ -45,8 +86,6 @@ body {
   scrollbar-color: #2a2a30 transparent;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+@utility text-balance {
+  text-wrap: balance;
 }

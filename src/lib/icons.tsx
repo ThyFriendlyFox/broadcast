@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  Twitter,
+  AtSign as Twitter,
   MessageSquare,
   Search,
   FileText,
   Newspaper,
-  Linkedin,
+  Briefcase as Linkedin,
   Video,
   type LucideIcon,
 } from "lucide-react";
